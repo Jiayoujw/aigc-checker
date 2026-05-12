@@ -2,10 +2,11 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type {
   DetectResponse,
+  CompareResponse,
   PlagiarismResponse,
   RewriteResponse,
 } from '../types';
-import { detectAigc, checkPlagiarism, rewriteText } from '../services/api';
+import { detectAigc, detectCompare, checkPlagiarism, rewriteText } from '../services/api';
 import Navbar from '../components/Navbar';
 import TextInput from '../components/TextInput';
 import ScoreGauge from '../components/ScoreGauge';
@@ -35,7 +36,13 @@ export default function Workbench() {
   const [rewriteLoading, setRewriteLoading] = useState(false);
   const [plagiarismLoading, setPlagiarismLoading] = useState(false);
 
+  const [mode, setMode] = useState<'general' | 'academic' | 'resume' | 'social_media'>('general');
+  const [intensity, setIntensity] = useState<'light' | 'medium' | 'deep'>('medium');
+  const [preserveTerms, setPreserveTerms] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+
   const [detectResult, setDetectResult] = useState<DetectResponse | null>(null);
+  const [compareResult, setCompareResult] = useState<CompareResponse | null>(null);
   const [rewriteResult, setRewriteResult] =
     useState<RewriteResponse | null>(null);
   const [plagiarismResult, setPlagiarismResult] =
@@ -47,15 +54,25 @@ export default function Workbench() {
   const handleDetect = useCallback(async () => {
     if (!canSubmit) return;
     setDetectLoading(true);
+    setCompareResult(null);
+    setDetectResult(null);
     try {
-      const res = await detectAigc({ text, provider: 'auto' });
-      setDetectResult(res);
+      if (compareMode) {
+        const res = await detectCompare({
+          text, provider: 'auto',
+          mode,
+        } as unknown as Parameters<typeof detectCompare>[0]);
+        setCompareResult(res);
+      } else {
+        const res = await detectAigc({ text, provider: 'auto', mode });
+        setDetectResult(res);
+      }
     } catch (e) {
       toast(e instanceof Error ? e.message : '检测失败', 'error');
     } finally {
       setDetectLoading(false);
     }
-  }, [text, canSubmit]);
+  }, [text, canSubmit, mode, compareMode]);
 
   const handlePlagiarism = useCallback(async () => {
     if (!canSubmit) return;
@@ -74,7 +91,9 @@ export default function Workbench() {
     if (!canSubmit) return;
     setRewriteLoading(true);
     try {
-      const res = await rewriteText({ text, provider: 'auto' });
+      const res = await rewriteText({
+        text, provider: 'auto', intensity, preserve_terms: preserveTerms,
+      });
       setRewriteResult(res);
     } catch (e) {
       toast(e instanceof Error ? e.message : '改写失败', 'error');
@@ -198,6 +217,67 @@ export default function Workbench() {
           </AnimatePresence>
         </div>
 
+        {/* Options bar */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          {activeTab === 'detect' && (
+            <>
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value as typeof mode)}
+                className="text-xs px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700
+                           bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+              >
+                <option value="general">通用模式</option>
+                <option value="academic">论文模式</option>
+                <option value="resume">简历模式</option>
+                <option value="social_media">自媒体模式</option>
+              </select>
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={compareMode}
+                  onChange={(e) => setCompareMode(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-gray-600 dark:text-gray-400">
+                  双模型对比 (DeepSeek + OpenAI)
+                </span>
+              </label>
+            </>
+          )}
+          {activeTab === 'rewrite' && (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">强度:</span>
+                {(['light', 'medium', 'deep'] as const).map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => setIntensity(l)}
+                    className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${
+                      intensity === l
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-white dark:bg-gray-900 text-gray-500 border border-gray-200 dark:border-gray-800'
+                    }`}
+                  >
+                    {l === 'light' ? '轻度' : l === 'medium' ? '中度' : '深度'}
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={preserveTerms}
+                  onChange={(e) => setPreserveTerms(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-gray-600 dark:text-gray-400">
+                  保留专业术语
+                </span>
+              </label>
+            </>
+          )}
+        </div>
+
         {/* Tab buttons */}
         <div className="flex gap-2 mb-8">
           {tabs.map((tab) => (
@@ -251,6 +331,51 @@ export default function Workbench() {
 
         {/* Results */}
         <AnimatePresence mode="wait">
+          {activeTab === 'detect' && compareResult && (
+            <motion.div
+              key="compare-result"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    双模型对比检测
+                  </h3>
+                  <button
+                    onClick={handleExport}
+                    className="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-600
+                               text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    {'📥'} 导出报告
+                  </button>
+                </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 mb-2">DeepSeek</p>
+                    <ScoreGauge score={compareResult.deepseek.score} label="" size="sm" />
+                    <p className="text-xs text-gray-500 mt-2">{compareResult.deepseek.analysis}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 mb-2">OpenAI</p>
+                    <ScoreGauge score={compareResult.openai.score} label="" size="sm" />
+                    <p className="text-xs text-gray-500 mt-2">{compareResult.openai.analysis}</p>
+                  </div>
+                </div>
+                {compareResult.consensus.agreement && (
+                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
+                    <span className="text-xs text-blue-600 dark:text-blue-400">
+                      一致性: {compareResult.consensus.agreement === 'high' ? '高' : compareResult.consensus.agreement === 'medium' ? '中' : '低'}
+                      {' · '}平均分: {compareResult.consensus.avg_score}%
+                      {compareResult.consensus.diff !== undefined && ` · 差异: ${compareResult.consensus.diff}%`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
           {activeTab === 'detect' && detectResult && (
             <motion.div
               key="detect-result"

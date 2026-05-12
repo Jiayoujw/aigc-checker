@@ -19,7 +19,9 @@ async def rewrite(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        result = await rewrite_text(req.text, req.provider)
+        result = await rewrite_text(
+            req.text, req.provider, req.intensity, req.preserve_terms
+        )
         if user:
             await save_history(
                 user.id,

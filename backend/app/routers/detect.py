@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schemas import DetectRequest, DetectResponse
 from ..services.aigc_detector import detect_aigc
-from ..services.auth_service import get_current_user, require_user
+from ..services.auth_service import get_current_user
 from ..db.database import get_db
 from ..db.models import User
 from .history import save_history
@@ -19,7 +19,7 @@ async def detect(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        result = await detect_aigc(req.text, req.provider)
+        result = await detect_aigc(req.text, req.provider, req.mode)
         if user:
             await save_history(
                 user.id, "detect", req.text, json.dumps(result, ensure_ascii=False), db

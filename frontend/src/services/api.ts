@@ -1,6 +1,7 @@
 import type {
   DetectRequest,
   DetectResponse,
+  CompareResponse,
   PlagiarismRequest,
   PlagiarismResponse,
   RewriteRequest,
@@ -64,6 +65,12 @@ async function authDelete<T>(url: string): Promise<T> {
 
 export async function detectAigc(data: DetectRequest): Promise<DetectResponse> {
   return request<DetectResponse>('/detect-aigc', data);
+}
+
+export async function detectCompare(
+  data: DetectRequest
+): Promise<CompareResponse> {
+  return request<CompareResponse>('/detect-compare', data);
 }
 
 export async function checkPlagiarism(

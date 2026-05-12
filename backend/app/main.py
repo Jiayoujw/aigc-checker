@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .db.database import init_db
-from .routers import detect, plagiarism, rewrite, auth, history, upload, export
+from .routers import detect, plagiarism, rewrite, auth, history, upload, export, compare
 
 
 @asynccontextmanager
@@ -31,6 +31,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(history.router, prefix="/api")
 app.include_router(upload.router, prefix="/api")
 app.include_router(export.router, prefix="/api")
+app.include_router(compare.router, prefix="/api")
 
 
 @app.get("/api/health")
