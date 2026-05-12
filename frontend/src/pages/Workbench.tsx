@@ -14,6 +14,10 @@ import DiffViewer from '../components/DiffViewer';
 import FileUpload from '../components/FileUpload';
 import { toast } from '../components/Toast';
 
+const API_BASE = import.meta.env.PROD
+  ? 'https://aigc-checker.onrender.com/api'
+  : '/api';
+
 type Tab = 'detect' | 'rewrite' | 'plagiarism';
 type InputMode = 'text' | 'file';
 
@@ -78,6 +82,43 @@ export default function Workbench() {
       setRewriteLoading(false);
     }
   }, [text, canSubmit]);
+
+  const handleExport = useCallback(async () => {
+    try {
+      const payload: Record<string, unknown> = {};
+      if (detectResult) {
+        payload.type = 'detect';
+        payload.score = detectResult.score;
+        payload.analysis = detectResult.analysis;
+        payload.suspicious_segments = detectResult.suspicious_segments;
+      } else if (plagiarismResult) {
+        payload.type = 'plagiarism';
+        payload.similarity_score = plagiarismResult.similarity_score;
+        payload.details = plagiarismResult.details;
+      } else if (rewriteResult) {
+        payload.type = 'rewrite';
+        payload.rewritten_text = rewriteResult.rewritten_text;
+        payload.changes_summary = rewriteResult.changes_summary;
+        payload.score = rewriteResult.new_aigc_score;
+      }
+      const res = await fetch(`${API_BASE}/export-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('导出失败');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `aigc-report-${Date.now()}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('报告已下载', 'success');
+    } catch {
+      toast('导出失败', 'error');
+    }
+  }, [detectResult, plagiarismResult, rewriteResult]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -218,9 +259,18 @@ export default function Workbench() {
               exit={{ opacity: 0 }}
             >
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-                  AIGC检测结果
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    AIGC检测结果
+                  </h3>
+                  <button
+                    onClick={handleExport}
+                    className="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-600
+                               text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    {'📥'} 导出报告
+                  </button>
+                </div>
                 <div className="flex flex-col md:flex-row items-start gap-6">
                   <ScoreGauge score={detectResult.score} label="AI生成概率" />
                   <div className="flex-1 space-y-4">
@@ -244,9 +294,18 @@ export default function Workbench() {
               exit={{ opacity: 0 }}
             >
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-                  查重检测结果
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    查重检测结果
+                  </h3>
+                  <button
+                    onClick={handleExport}
+                    className="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-600
+                               text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    {'📥'} 导出报告
+                  </button>
+                </div>
                 <div className="flex flex-col md:flex-row items-start gap-6">
                   <ScoreGauge
                     score={plagiarismResult.similarity_score}
@@ -289,9 +348,18 @@ export default function Workbench() {
               exit={{ opacity: 0 }}
             >
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-                  降AIGC改写结果
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    降AIGC改写结果
+                  </h3>
+                  <button
+                    onClick={handleExport}
+                    className="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-600
+                               text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    {'📥'} 导出报告
+                  </button>
+                </div>
                 <DiffViewer
                   original={text}
                   rewritten={rewriteResult.rewritten_text}
