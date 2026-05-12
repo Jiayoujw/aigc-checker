@@ -43,4 +43,10 @@ export interface RewriteResponse {
   new_aigc_score: number;
 }
 
-export type TabType = 'detect' | 'rewrite' | 'plagiarism';
+export interface HistoryRecord {
+  id: string;
+  type: 'detect' | 'plagiarism' | 'rewrite';
+  input_text: string;
+  result_json: string;
+  created_at: string;
+}
