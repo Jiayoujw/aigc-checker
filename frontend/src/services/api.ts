@@ -7,7 +7,9 @@ import type {
   RewriteResponse,
 } from '../types';
 
-const BASE = '/api';
+const BASE = import.meta.env.PROD
+  ? 'https://aigc-checker.onrender.com/api'
+  : '/api';
 
 async function request<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {
