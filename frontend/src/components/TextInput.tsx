@@ -8,9 +8,11 @@ export default function TextInput({ value, onChange, maxLength = 5000 }: Props) 
   return (
     <div>
       <textarea
-        className="w-full h-52 p-4 border border-gray-300 rounded-lg resize-none
+        className="w-full h-52 p-4 border border-gray-300 dark:border-gray-700
+                   rounded-lg resize-none bg-white dark:bg-gray-900
                    focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                   text-gray-800 placeholder-gray-400 text-sm leading-relaxed
+                   text-gray-800 dark:text-gray-200 placeholder-gray-400
+                   dark:placeholder-gray-500 text-sm leading-relaxed
                    transition-shadow"
         placeholder="在此粘贴需要检测的文本（至少50字，支持中文/英文）..."
         value={value}

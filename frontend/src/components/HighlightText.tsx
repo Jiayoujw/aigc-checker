@@ -13,7 +13,7 @@ function getHighlightColor(score: number): string {
 export default function HighlightText({ segments }: Props) {
   if (segments.length === 0) {
     return (
-      <p className="text-sm text-green-600 bg-green-50 rounded-lg p-3">
+      <p className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
         未检测到明显AI生成痕迹
       </p>
     );
