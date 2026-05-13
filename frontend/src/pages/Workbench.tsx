@@ -1,5 +1,10 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ScanEye, PenLine, FileSearch, Download,
+  LayoutDashboard, Gauge, Brain, BarChart3,
+  AlertTriangle, ChevronRight,
+} from 'lucide-react';
 import type {
   DetectResponse,
   CompareResponse,
@@ -22,11 +27,154 @@ const API_BASE = import.meta.env.PROD
 type Tab = 'detect' | 'rewrite' | 'plagiarism';
 type InputMode = 'text' | 'file';
 
-const tabs: { key: Tab; label: string; icon: string }[] = [
-  { key: 'detect', label: 'AIGC检测', icon: '🔍' },
-  { key: 'rewrite', label: '降AIGC改写', icon: '✏️' },
-  { key: 'plagiarism', label: '查重检测', icon: '📑' },
+const tabs: { key: Tab; label: string; icon: typeof ScanEye }[] = [
+  { key: 'detect', label: 'AIGC检测', icon: ScanEye },
+  { key: 'rewrite', label: '降AIGC改写', icon: PenLine },
+  { key: 'plagiarism', label: '查重检测', icon: FileSearch },
 ];
+
+function FeatureBar({ label, value, detail }: { label: string; value: number; detail?: string }) {
+  const pct = Math.max(0, Math.min(100, value));
+  const color = pct < 30 ? 'bg-green-500' : pct < 70 ? 'bg-amber-500' : 'bg-red-500';
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span className="text-gray-500">{label}</span>
+        <span className="font-medium text-gray-700 dark:text-gray-300">{pct.toFixed(0)}</span>
+      </div>
+      <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${color}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {detail && <p className="text-xs text-gray-400">{detail}</p>}
+    </div>
+  );
+}
+
+function ParagraphHeatmap({ paragraphs }: { paragraphs: DetectResponse['paragraphs'] }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!paragraphs || paragraphs.length === 0) return null;
+
+  const visible = expanded ? paragraphs : paragraphs.slice(0, 6);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+          <BarChart3 className="w-3.5 h-3.5" />
+          段落热力图
+        </h4>
+        {paragraphs.length > 6 && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1"
+          >
+            {expanded ? '收起' : `查看全部 (${paragraphs.length})`}
+            {expanded ? <ChevronRight className="w-3 h-3 rotate-90" /> : <ChevronRight className="w-3 h-3" />}
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        {visible.map((p) => {
+          const color =
+            p.level === 'high' ? 'border-red-400 bg-red-50 dark:bg-red-950/20' :
+            p.level === 'medium' ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/20' :
+            'border-green-400 bg-green-50 dark:bg-green-950/20';
+          const barColor =
+            p.level === 'high' ? 'bg-red-500' :
+            p.level === 'medium' ? 'bg-amber-500' :
+            'bg-green-500';
+
+          return (
+            <div key={p.index} className={`border-l-2 rounded-r-lg p-2.5 text-xs ${color}`}>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-gray-400 font-mono w-6">#{p.index + 1}</span>
+                <span className="flex-1 text-gray-700 dark:text-gray-300 truncate">
+                  {p.text.slice(0, 100)}{p.text.length > 100 ? '...' : ''}
+                </span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${barColor}`} style={{ width: `${p.fused_score}%` }} />
+                  </div>
+                  <span className={`font-bold w-8 text-right ${
+                    p.level === 'high' ? 'text-red-600' :
+                    p.level === 'medium' ? 'text-amber-600' :
+                    'text-green-600'
+                  }`}>
+                    {p.fused_score.toFixed(0)}
+                  </span>
+                </div>
+              </div>
+              {p.stat_details.length > 0 && (
+                <div className="mt-1 text-gray-400 pl-6 truncate">
+                  {p.stat_details[0]}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StatPanel({ stat, fused }: { stat: DetectResponse['statistical_analysis']; fused: DetectResponse['fused_result'] }) {
+  if (!stat && !fused) return null;
+
+  return (
+    <div className="space-y-4">
+      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+        <Gauge className="w-3.5 h-3.5" />
+        多维特征分析
+      </h4>
+
+      {stat && (
+        <div className="space-y-2.5">
+          <FeatureBar label="困惑度" value={stat.perplexity} detail="文本可预测性" />
+          <FeatureBar label="句式突发度" value={stat.burstiness} detail="句长变化程度" />
+          <FeatureBar label="词汇多样性" value={stat.lexical_diversity} detail="用词重复度" />
+          <FeatureBar label="模板匹配" value={Math.min(100, stat.template_hits * 12)} detail={`${stat.template_hits}处AI常见表达`} />
+        </div>
+      )}
+
+      {fused && (
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+          {[
+            ['LLM语义', fused.llm_score, fused.llm_score < 30 ? 'text-green-600' : fused.llm_score < 70 ? 'text-amber-600' : 'text-red-600'],
+            ['统计分析', fused.statistical_score, fused.statistical_score < 30 ? 'text-green-600' : fused.statistical_score < 70 ? 'text-amber-600' : 'text-red-600'],
+            ['融合判定', fused.combined_score, 'text-blue-600 font-bold'],
+          ].map(([label, val, cls]) => (
+            <div key={label as string} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2 text-center">
+              <p className="text-xs text-gray-400">{label}</p>
+              <p className={`text-lg ${cls}`}>{(val as number).toFixed(0)}</p>
+            </div>
+          ))}
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2 text-center">
+            <p className="text-xs text-gray-400">置信度</p>
+            <p className={`text-sm font-medium ${
+              fused.confidence === 'high' ? 'text-green-600' :
+              fused.confidence === 'medium' ? 'text-amber-600' : 'text-red-600'
+            }`}>
+              {fused.confidence === 'high' ? '高' : fused.confidence === 'medium' ? '中' : '低'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {stat?.details && stat.details.length > 0 && (
+        <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+          <p className="text-xs text-gray-500 mb-1">特征详情:</p>
+          {stat.details.slice(0, 3).map((d, i) => (
+            <p key={i} className="text-xs text-gray-400">• {d}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Workbench() {
   const [text, setText] = useState('');
@@ -43,10 +191,8 @@ export default function Workbench() {
 
   const [detectResult, setDetectResult] = useState<DetectResponse | null>(null);
   const [compareResult, setCompareResult] = useState<CompareResponse | null>(null);
-  const [rewriteResult, setRewriteResult] =
-    useState<RewriteResponse | null>(null);
-  const [plagiarismResult, setPlagiarismResult] =
-    useState<PlagiarismResponse | null>(null);
+  const [rewriteResult, setRewriteResult] = useState<RewriteResponse | null>(null);
+  const [plagiarismResult, setPlagiarismResult] = useState<PlagiarismResponse | null>(null);
 
   const canSubmit = text.length >= 50;
   const isLoading = detectLoading || rewriteLoading || plagiarismLoading;
@@ -61,7 +207,7 @@ export default function Workbench() {
         const res = await detectCompare({
           text, provider: 'auto',
           mode,
-        } as unknown as Parameters<typeof detectCompare>[0]);
+        } as Parameters<typeof detectCompare>[0]);
         setCompareResult(res);
       } else {
         const res = await detectAigc({ text, provider: 'auto', mode });
@@ -104,16 +250,13 @@ export default function Workbench() {
 
   const handleExport = useCallback(async () => {
     try {
-      const payload: Record<string, unknown> = {};
+      const payload: Record<string, unknown> = { type: 'detect' };
       if (detectResult) {
-        payload.type = 'detect';
-        payload.score = detectResult.score;
-        payload.analysis = detectResult.analysis;
-        payload.suspicious_segments = detectResult.suspicious_segments;
+        Object.assign(payload, detectResult);
+        payload.char_count = text.length;
       } else if (plagiarismResult) {
         payload.type = 'plagiarism';
-        payload.similarity_score = plagiarismResult.similarity_score;
-        payload.details = plagiarismResult.details;
+        Object.assign(payload, plagiarismResult);
       } else if (rewriteResult) {
         payload.type = 'rewrite';
         payload.rewritten_text = rewriteResult.rewritten_text;
@@ -137,7 +280,7 @@ export default function Workbench() {
     } catch {
       toast('导出失败', 'error');
     }
-  }, [detectResult, plagiarismResult, rewriteResult]);
+  }, [detectResult, plagiarismResult, rewriteResult, text]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -152,13 +295,16 @@ export default function Workbench() {
     [activeTab, handleDetect, handleRewrite, handlePlagiarism]
   );
 
+  const ActiveIcon = tabs.find(t => t.key === activeTab)?.icon || ScanEye;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950" onKeyDown={handleKeyDown}>
       <Navbar />
       <main className="max-w-5xl mx-auto px-4 md:px-6 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <LayoutDashboard className="w-5 h-5 text-blue-500" />
             工作台
           </h2>
           <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -239,8 +385,9 @@ export default function Workbench() {
                   onChange={(e) => setCompareMode(e.target.checked)}
                   className="rounded"
                 />
-                <span className="text-gray-600 dark:text-gray-400">
-                  双模型对比 (DeepSeek + OpenAI)
+                <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                  <Brain className="w-3.5 h-3.5" />
+                  双模型对比
                 </span>
               </label>
             </>
@@ -280,24 +427,27 @@ export default function Workbench() {
 
         {/* Tab buttons */}
         <div className="flex gap-2 mb-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              disabled={isLoading}
-              className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all
-                         disabled:opacity-50 disabled:cursor-not-allowed
-                         active:scale-[0.98]
-                         ${
-                           activeTab === tab.key
-                             ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                             : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
-                         }`}
-            >
-              <span className="mr-1.5">{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                disabled={isLoading}
+                className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           active:scale-[0.98] flex items-center justify-center gap-1.5
+                           ${
+                             activeTab === tab.key
+                               ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
+                               : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
+                           }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Action button */}
@@ -316,63 +466,76 @@ export default function Workbench() {
                        hover:from-blue-600 hover:to-blue-700
                        disabled:opacity-50 disabled:cursor-not-allowed
                        transition-all shadow-lg shadow-blue-500/25
-                       active:scale-[0.99]"
+                       active:scale-[0.99] flex items-center justify-center gap-2"
           >
             {isLoading ? (
-              <span className="flex items-center justify-center gap-2">
+              <>
                 <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 处理中...
-              </span>
+              </>
             ) : (
-              `开始${tabs.find((t) => t.key === activeTab)?.label}`
+              <>
+                <ActiveIcon className="w-5 h-5" />
+                开始{tabs.find((t) => t.key === activeTab)?.label}
+              </>
             )}
           </button>
         </div>
 
         {/* Results */}
         <AnimatePresence mode="wait">
+          {/* === AIGC DETECTION RESULT (with paragraph + stats) === */}
           {activeTab === 'detect' && compareResult && (
             <motion.div
               key="compare-result"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
+              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm mb-6"
             >
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    双模型对比检测
-                  </h3>
-                  <button
-                    onClick={handleExport}
-                    className="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-600
-                               text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    {'📥'} 导出报告
-                  </button>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500 mb-2">DeepSeek</p>
-                    <ScoreGauge score={compareResult.deepseek.score} label="" size="sm" />
-                    <p className="text-xs text-gray-500 mt-2">{compareResult.deepseek.analysis}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500 mb-2">OpenAI</p>
-                    <ScoreGauge score={compareResult.openai.score} label="" size="sm" />
-                    <p className="text-xs text-gray-500 mt-2">{compareResult.openai.analysis}</p>
-                  </div>
-                </div>
-                {compareResult.consensus.agreement && (
-                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
-                    <span className="text-xs text-blue-600 dark:text-blue-400">
-                      一致性: {compareResult.consensus.agreement === 'high' ? '高' : compareResult.consensus.agreement === 'medium' ? '中' : '低'}
-                      {' · '}平均分: {compareResult.consensus.avg_score}%
-                      {compareResult.consensus.diff !== undefined && ` · 差异: ${compareResult.consensus.diff}%`}
-                    </span>
-                  </div>
-                )}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-blue-500" />
+                  双模型对比检测
+                </h3>
+                <button
+                  onClick={handleExport}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600
+                             text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors
+                             flex items-center gap-1"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  导出报告
+                </button>
               </div>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="text-center">
+                  <p className="text-xs text-gray-500 mb-2">DeepSeek</p>
+                  <ScoreGauge score={compareResult.deepseek.score} label="" size="sm" />
+                  <p className="text-xs text-gray-500 mt-2">{compareResult.deepseek.analysis}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-500 mb-2">OpenAI</p>
+                  <ScoreGauge score={compareResult.openai.score} label="" size="sm" />
+                  <p className="text-xs text-gray-500 mt-2">{compareResult.openai.analysis}</p>
+                </div>
+              </div>
+              {compareResult.consensus.agreement && (
+                <div className={`mt-4 p-3 rounded-lg text-center ${
+                  compareResult.consensus.agreement === 'high'
+                    ? 'bg-green-50 dark:bg-green-900/20'
+                    : compareResult.consensus.agreement === 'medium'
+                    ? 'bg-amber-50 dark:bg-amber-900/20'
+                    : 'bg-red-50 dark:bg-red-900/20'
+                }`}>
+                  <span className="text-xs">
+                    一致性: {' '}
+                    {compareResult.consensus.agreement === 'high' ? '高' : compareResult.consensus.agreement === 'medium' ? '中' : '低'}
+                    {' · '}平均分: {compareResult.consensus.avg_score}%
+                    {compareResult.consensus.diff !== undefined && ` · 差异: ${compareResult.consensus.diff}%`}
+                  </span>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -382,35 +545,101 @@ export default function Workbench() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
+              className="space-y-6"
             >
+              {/* Score + main info */}
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <ScanEye className="w-4 h-4 text-blue-500" />
                     AIGC检测结果
+                    {detectResult.confidence && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        detectResult.confidence === 'high'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : detectResult.confidence === 'medium'
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      }`}>
+                        {detectResult.confidence === 'high' ? '高置信度' : detectResult.confidence === 'medium' ? '中置信度' : '低置信度'}
+                      </span>
+                    )}
+                    {detectResult.mixed_content && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        混合内容
+                      </span>
+                    )}
                   </h3>
-                  <button
-                    onClick={handleExport}
-                    className="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-600
-                               text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    {'📥'} 导出报告
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {detectResult.detection_time_ms && (
+                      <span className="text-xs text-gray-400">{detectResult.detection_time_ms}ms</span>
+                    )}
+                    <button
+                      onClick={handleExport}
+                      className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600
+                                 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors
+                                 flex items-center gap-1"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      导出报告
+                    </button>
+                  </div>
                 </div>
-                <div className="flex flex-col md:flex-row items-start gap-6">
+
+                <div className="flex flex-col md:flex-row items-start gap-8">
                   <ScoreGauge score={detectResult.score} label="AI生成概率" />
-                  <div className="flex-1 space-y-4">
+                  <div className="flex-1 space-y-4 min-w-0">
+                    {/* Score distribution for paragraph analysis */}
+                    {detectResult.score_distribution && (
+                      <div className="flex gap-3 text-xs">
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-green-500" />
+                          <span className="text-gray-500">低: {detectResult.score_distribution.low}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-amber-500" />
+                          <span className="text-gray-500">中: {detectResult.score_distribution.medium}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded bg-red-500" />
+                          <span className="text-gray-500">高: {detectResult.score_distribution.high}</span>
+                        </div>
+                        {detectResult.paragraph_count && (
+                          <span className="text-gray-400">共 {detectResult.paragraph_count} 段</span>
+                        )}
+                      </div>
+                    )}
+
                     <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                       {detectResult.analysis}
                     </p>
-                    <HighlightText
-                      segments={detectResult.suspicious_segments}
-                    />
+
+                    <HighlightText segments={detectResult.suspicious_segments} />
                   </div>
                 </div>
               </div>
+
+              {/* Paragraph heatmap (for long text) */}
+              {detectResult.paragraphs && detectResult.paragraphs.length > 1 && (
+                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+                  <ParagraphHeatmap paragraphs={detectResult.paragraphs} />
+                </div>
+              )}
+
+              {/* Statistical & fusion panel */}
+              {(detectResult.statistical_analysis || detectResult.fused_result) && (
+                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+                  <StatPanel
+                    stat={detectResult.statistical_analysis}
+                    fused={detectResult.fused_result}
+                  />
+                </div>
+              )}
             </motion.div>
           )}
 
+          {/* Plagiarism result */}
           {activeTab === 'plagiarism' && plagiarismResult && (
             <motion.div
               key="plagiarism-result"
@@ -420,42 +649,34 @@ export default function Workbench() {
             >
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <FileSearch className="w-4 h-4 text-blue-500" />
                     查重检测结果
                   </h3>
                   <button
                     onClick={handleExport}
-                    className="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-600
-                               text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600
+                               text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors
+                               flex items-center gap-1"
                   >
-                    {'📥'} 导出报告
+                    <Download className="w-3.5 h-3.5" />
+                    导出报告
                   </button>
                 </div>
                 <div className="flex flex-col md:flex-row items-start gap-6">
-                  <ScoreGauge
-                    score={plagiarismResult.similarity_score}
-                    label="重复率"
-                  />
+                  <ScoreGauge score={plagiarismResult.similarity_score} label="重复率" />
                   <div className="flex-1 space-y-3">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {plagiarismResult.details}
-                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{plagiarismResult.details}</p>
                     {plagiarismResult.similar_sources.length > 0 &&
                       plagiarismResult.similar_sources.map((src, i) => (
                         <div
                           key={i}
                           className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3"
                         >
-                          <p className="text-sm text-gray-800 dark:text-gray-200">
-                            {src.text}
-                          </p>
+                          <p className="text-sm text-gray-800 dark:text-gray-200">{src.text}</p>
                           <div className="flex gap-3 mt-1">
-                            <span className="text-xs text-gray-500">
-                              {src.reason}
-                            </span>
-                            <span className="text-xs text-orange-500">
-                              {src.possible_source_type}
-                            </span>
+                            <span className="text-xs text-gray-500">{src.reason}</span>
+                            <span className="text-xs text-orange-500">{src.possible_source_type}</span>
                           </div>
                         </div>
                       ))}
@@ -465,6 +686,7 @@ export default function Workbench() {
             </motion.div>
           )}
 
+          {/* Rewrite result */}
           {activeTab === 'rewrite' && rewriteResult && (
             <motion.div
               key="rewrite-result"
@@ -474,15 +696,18 @@ export default function Workbench() {
             >
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <PenLine className="w-4 h-4 text-blue-500" />
                     降AIGC改写结果
                   </h3>
                   <button
                     onClick={handleExport}
-                    className="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-600
-                               text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600
+                               text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors
+                               flex items-center gap-1"
                   >
-                    {'📥'} 导出报告
+                    <Download className="w-3.5 h-3.5" />
+                    导出报告
                   </button>
                 </div>
                 <DiffViewer
@@ -499,7 +724,7 @@ export default function Workbench() {
         {/* Empty state */}
         {!detectResult && !plagiarismResult && !rewriteResult && (
           <div className="text-center py-16 text-gray-400">
-            <p className="text-4xl mb-4">{'📝'}</p>
+            <ScanEye className="w-12 h-12 mx-auto mb-4 opacity-40" />
             <p className="text-sm">输入文本后开始分析</p>
           </div>
         )}
