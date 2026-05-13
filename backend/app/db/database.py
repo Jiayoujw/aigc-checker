@@ -1,6 +1,14 @@
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
+
+# Load .env BEFORE creating engine — this module is imported before config.py's load_dotenv runs
+_load_dotenv_path = Path(__file__).resolve().parent.parent.parent / ".env"
+if _load_dotenv_path.exists():
+    load_dotenv(_load_dotenv_path)
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
