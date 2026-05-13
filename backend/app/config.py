@@ -16,7 +16,7 @@ class Config:
 
     SERPAPI_KEY: str = os.getenv("SERPAPI_KEY", "")
 
-    MAX_TEXT_LENGTH: int = 5000
+    MAX_TEXT_LENGTH: int = 50000
     MIN_TEXT_LENGTH: int = 50
 
 
