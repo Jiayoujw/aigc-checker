@@ -37,3 +37,29 @@ app.include_router(compare.router, prefix="/api")
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.post("/api/debug-register")
+async def debug_register():
+    import traceback
+    from .db.database import async_session
+    from .db.models import User
+    from .services.auth_service import hash_password
+
+    try:
+        async with async_session() as db:
+            from sqlalchemy import select
+            result = await db.execute(select(User).where(User.email == "debug@test.com"))
+            if result.scalar_one_or_none():
+                return {"msg": "user already exists"}
+
+            user = User(
+                email="debug@test.com",
+                name="Debug",
+                password_hash=hash_password("test123456"),
+            )
+            db.add(user)
+            await db.commit()
+            return {"msg": "success", "user_id": user.id}
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
