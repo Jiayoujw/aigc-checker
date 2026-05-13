@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle, XCircle, Info } from 'lucide-react';
 
 interface ToastMessage {
   id: number;
@@ -13,10 +14,16 @@ export function toast(text: string, type: ToastMessage['type'] = 'info') {
   addToastFn?.(text, type);
 }
 
-const icons: Record<ToastMessage['type'], string> = {
-  success: '✅',
-  error: '❌',
-  info: 'ℹ️',
+const icons: Record<ToastMessage['type'], typeof CheckCircle> = {
+  success: CheckCircle,
+  error: XCircle,
+  info: Info,
+};
+
+const iconColors: Record<ToastMessage['type'], string> = {
+  success: 'text-green-500',
+  error: 'text-red-500',
+  info: 'text-blue-500',
 };
 
 const colors: Record<ToastMessage['type'], string> = {
@@ -46,18 +53,21 @@ export default function ToastContainer() {
   return (
     <div className="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-sm">
       <AnimatePresence>
-        {toasts.map((t) => (
-          <motion.div
-            key={t.id}
-            initial={{ opacity: 0, x: 50, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 50, scale: 0.9 }}
-            className={`border rounded-lg px-4 py-3 text-sm shadow-lg ${colors[t.type]}`}
-          >
-            <span className="mr-2">{icons[t.type]}</span>
-            <span className="text-gray-800 dark:text-gray-200">{t.text}</span>
-          </motion.div>
-        ))}
+        {toasts.map((t) => {
+          const Icon = icons[t.type];
+          return (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, x: 50, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 50, scale: 0.9 }}
+              className={`border rounded-lg px-4 py-3 text-sm shadow-lg flex items-center gap-2 ${colors[t.type]}`}
+            >
+              <Icon className={`w-4 h-4 flex-shrink-0 ${iconColors[t.type]}`} />
+              <span className="text-gray-800 dark:text-gray-200">{t.text}</span>
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
     </div>
   );

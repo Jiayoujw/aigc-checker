@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ScanEye, FileSearch, PenLine, Clock, Trash2,
+  ScanEye, PenLine, Clock, Trash2,
   ChevronRight, Filter, Search, Inbox, ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +13,6 @@ import { toast } from '../components/Toast';
 
 const typeConfig: Record<string, { icon: typeof ScanEye; label: string; color: string; bg: string }> = {
   detect: { icon: ScanEye, label: 'AIGC检测', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/30' },
-  plagiarism: { icon: FileSearch, label: '查重检测', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-950/30' },
   rewrite: { icon: PenLine, label: '降AIGC改写', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
 };
 
@@ -24,7 +23,6 @@ function parseResultJson(json: string): { score?: number; level?: string; combin
 const filters = [
   { key: '', label: '全部', icon: Filter },
   { key: 'detect', label: 'AIGC检测', icon: ScanEye },
-  { key: 'plagiarism', label: '查重检测', icon: FileSearch },
   { key: 'rewrite', label: '降AIGC改写', icon: PenLine },
 ];
 

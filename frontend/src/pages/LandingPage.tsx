@@ -10,23 +10,15 @@ const features = [
   {
     icon: ScanEye,
     title: 'AIGC 检测',
-    desc: '双模型AI检测引擎，段落级深度分析。精准判断文本是否由ChatGPT、Claude等AI生成，支持学术论文/简历/自媒体等多场景模式。',
+    desc: '双模型AI检测引擎，段落级深度分析。精准判断文本是否由ChatGPT、Claude等AI生成，支持学术论文/简历/自媒体等多场景模式。5维统计特征分析 + LLM语义检测，对标知网/维普权威标准。',
     color: 'from-blue-500 to-cyan-400',
     bgColor: 'bg-blue-50 dark:bg-blue-950/30',
     iconColor: 'text-blue-600 dark:text-blue-400',
   },
   {
-    icon: FileSearch,
-    title: '查重检测',
-    desc: '智能语义查重结合n-gram相似度分析，识别文本中的抄袭和重复内容，提供详细的相似来源标注。',
-    color: 'from-purple-500 to-violet-400',
-    bgColor: 'bg-purple-50 dark:bg-purple-950/30',
-    iconColor: 'text-purple-600 dark:text-purple-400',
-  },
-  {
     icon: PenLine,
-    title: '一键降 AIGC',
-    desc: '三档强度可选（轻度/中度/深度），保留专业术语的同时将AI文本改写为自然人类写作风格，改写后自动复检。',
+    title: '降 AIGC 改写',
+    desc: '三档强度可选（轻度/中度/深度），保留专业术语的同时将AI文本改写为自然人类写作风格。改写后自动复检，确保AIGC痕迹降至最低，帮助通过各类AI检测审核。',
     color: 'from-emerald-500 to-teal-400',
     bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
     iconColor: 'text-emerald-600 dark:text-emerald-400',
@@ -175,10 +167,10 @@ export default function LandingPage() {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            三大核心功能
+            两大核心能力
           </h2>
           <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
-            从检测到改写，全流程覆盖你的文本质量需求
+            从检测到降AIGC，专业级文本质量保障
           </p>
         </motion.div>
 
@@ -187,7 +179,7 @@ export default function LandingPage() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="grid md:grid-cols-3 gap-8"
+          className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto"
         >
           {features.map((f) => {
             const Icon = f.icon;

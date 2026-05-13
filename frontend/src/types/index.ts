@@ -71,22 +71,6 @@ export interface SuspiciousSegment {
   reason: string;
 }
 
-export interface PlagiarismRequest {
-  text: string;
-}
-
-export interface PlagiarismResponse {
-  similarity_score: number;
-  similar_sources: SimilarSource[];
-  details: string;
-}
-
-export interface SimilarSource {
-  text: string;
-  reason: string;
-  possible_source_type: string;
-}
-
 export interface RewriteRequest {
   text: string;
   provider: 'deepseek' | 'openai' | 'auto';
@@ -102,7 +86,7 @@ export interface RewriteResponse {
 
 export interface HistoryRecord {
   id: string;
-  type: 'detect' | 'plagiarism' | 'rewrite';
+  type: 'detect' | 'rewrite';
   input_text: string;
   result_json: string;
   created_at: string;

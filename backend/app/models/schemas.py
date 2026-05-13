@@ -38,16 +38,6 @@ class DetectResponse(BaseModel):
     detection_time_ms: float | None = None
 
 
-class PlagiarismRequest(BaseModel):
-    text: str = Field(..., min_length=50, max_length=50000)
-
-
-class PlagiarismResponse(BaseModel):
-    similarity_score: float
-    similar_sources: list[dict]
-    details: str
-
-
 class RewriteRequest(BaseModel):
     text: str = Field(..., min_length=50, max_length=50000)
     provider: Literal["deepseek", "openai", "auto"] = "auto"

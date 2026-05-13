@@ -2,8 +2,6 @@ import type {
   DetectRequest,
   DetectResponse,
   CompareResponse,
-  PlagiarismRequest,
-  PlagiarismResponse,
   RewriteRequest,
   RewriteResponse,
   HistoryRecord,
@@ -71,12 +69,6 @@ export async function detectCompare(
   data: DetectRequest
 ): Promise<CompareResponse> {
   return request<CompareResponse>('/detect-compare', data);
-}
-
-export async function checkPlagiarism(
-  data: PlagiarismRequest
-): Promise<PlagiarismResponse> {
-  return request<PlagiarismResponse>('/check-plagiarism', data);
 }
 
 export async function rewriteText(

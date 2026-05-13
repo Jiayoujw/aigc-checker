@@ -25,10 +25,6 @@ class ExportRequest(BaseModel):
     detection_time_ms: float = 0
     mode: str = "general"
     provider: str = "auto"
-    # Plagiarism fields
-    similarity_score: float | None = None
-    similar_sources: list[dict] | None = None
-    details: str = ""
     # Rewrite fields
     rewritten_text: str = ""
     changes_summary: str = ""

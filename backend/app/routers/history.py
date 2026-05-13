@@ -20,7 +20,7 @@ async def get_history(
     db: AsyncSession = Depends(get_db),
 ):
     query = select(HistoryRecord).where(HistoryRecord.user_id == user.id)
-    if record_type and record_type in ("detect", "plagiarism", "rewrite"):
+    if record_type and record_type in ("detect", "rewrite"):
         query = query.where(HistoryRecord.record_type == RecordType(record_type))
 
     query = query.order_by(HistoryRecord.created_at.desc()).offset(offset).limit(limit)

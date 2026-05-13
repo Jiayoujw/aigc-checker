@@ -1,17 +1,16 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ScanEye, PenLine, FileSearch, Download,
+  ScanEye, PenLine, Download,
   LayoutDashboard, Gauge, Brain, BarChart3,
   AlertTriangle, ChevronRight,
 } from 'lucide-react';
 import type {
   DetectResponse,
   CompareResponse,
-  PlagiarismResponse,
   RewriteResponse,
 } from '../types';
-import { detectAigc, detectCompare, checkPlagiarism, rewriteText } from '../services/api';
+import { detectAigc, detectCompare, rewriteText } from '../services/api';
 import Navbar from '../components/Navbar';
 import TextInput from '../components/TextInput';
 import ScoreGauge from '../components/ScoreGauge';
@@ -24,13 +23,12 @@ const API_BASE = import.meta.env.PROD
   ? 'https://aigc-checker.onrender.com/api'
   : '/api';
 
-type Tab = 'detect' | 'rewrite' | 'plagiarism';
+type Tab = 'detect' | 'rewrite';
 type InputMode = 'text' | 'file';
 
 const tabs: { key: Tab; label: string; icon: typeof ScanEye }[] = [
   { key: 'detect', label: 'AIGC检测', icon: ScanEye },
   { key: 'rewrite', label: '降AIGC改写', icon: PenLine },
-  { key: 'plagiarism', label: '查重检测', icon: FileSearch },
 ];
 
 function FeatureBar({ label, value, detail }: { label: string; value: number; detail?: string }) {
@@ -182,7 +180,6 @@ export default function Workbench() {
   const [inputMode, setInputMode] = useState<InputMode>('text');
   const [detectLoading, setDetectLoading] = useState(false);
   const [rewriteLoading, setRewriteLoading] = useState(false);
-  const [plagiarismLoading, setPlagiarismLoading] = useState(false);
 
   const [mode, setMode] = useState<'general' | 'academic' | 'resume' | 'social_media'>('general');
   const [intensity, setIntensity] = useState<'light' | 'medium' | 'deep'>('medium');
@@ -192,10 +189,9 @@ export default function Workbench() {
   const [detectResult, setDetectResult] = useState<DetectResponse | null>(null);
   const [compareResult, setCompareResult] = useState<CompareResponse | null>(null);
   const [rewriteResult, setRewriteResult] = useState<RewriteResponse | null>(null);
-  const [plagiarismResult, setPlagiarismResult] = useState<PlagiarismResponse | null>(null);
 
   const canSubmit = text.length >= 50;
-  const isLoading = detectLoading || rewriteLoading || plagiarismLoading;
+  const isLoading = detectLoading || rewriteLoading;
 
   const handleDetect = useCallback(async () => {
     if (!canSubmit) return;
@@ -220,19 +216,6 @@ export default function Workbench() {
     }
   }, [text, canSubmit, mode, compareMode]);
 
-  const handlePlagiarism = useCallback(async () => {
-    if (!canSubmit) return;
-    setPlagiarismLoading(true);
-    try {
-      const res = await checkPlagiarism({ text });
-      setPlagiarismResult(res);
-    } catch (e) {
-      toast(e instanceof Error ? e.message : '查重失败', 'error');
-    } finally {
-      setPlagiarismLoading(false);
-    }
-  }, [text, canSubmit]);
-
   const handleRewrite = useCallback(async () => {
     if (!canSubmit) return;
     setRewriteLoading(true);
@@ -254,9 +237,6 @@ export default function Workbench() {
       if (detectResult) {
         Object.assign(payload, detectResult);
         payload.char_count = text.length;
-      } else if (plagiarismResult) {
-        payload.type = 'plagiarism';
-        Object.assign(payload, plagiarismResult);
       } else if (rewriteResult) {
         payload.type = 'rewrite';
         payload.rewritten_text = rewriteResult.rewritten_text;
@@ -280,19 +260,17 @@ export default function Workbench() {
     } catch {
       toast('导出失败', 'error');
     }
-  }, [detectResult, plagiarismResult, rewriteResult, text]);
+  }, [detectResult, rewriteResult, text]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.ctrlKey && e.key === 'Enter') {
         activeTab === 'detect'
           ? handleDetect()
-          : activeTab === 'rewrite'
-            ? handleRewrite()
-            : handlePlagiarism();
+          : handleRewrite();
       }
     },
-    [activeTab, handleDetect, handleRewrite, handlePlagiarism]
+    [activeTab, handleDetect, handleRewrite]
   );
 
   const ActiveIcon = tabs.find(t => t.key === activeTab)?.icon || ScanEye;
@@ -456,9 +434,7 @@ export default function Workbench() {
             onClick={
               activeTab === 'detect'
                 ? handleDetect
-                : activeTab === 'rewrite'
-                  ? handleRewrite
-                  : handlePlagiarism
+                : handleRewrite
             }
             disabled={!canSubmit || isLoading}
             className="w-full py-4 rounded-xl font-semibold text-white
@@ -639,53 +615,6 @@ export default function Workbench() {
             </motion.div>
           )}
 
-          {/* Plagiarism result */}
-          {activeTab === 'plagiarism' && plagiarismResult && (
-            <motion.div
-              key="plagiarism-result"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <FileSearch className="w-4 h-4 text-blue-500" />
-                    查重检测结果
-                  </h3>
-                  <button
-                    onClick={handleExport}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600
-                               text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors
-                               flex items-center gap-1"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    导出报告
-                  </button>
-                </div>
-                <div className="flex flex-col md:flex-row items-start gap-6">
-                  <ScoreGauge score={plagiarismResult.similarity_score} label="重复率" />
-                  <div className="flex-1 space-y-3">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{plagiarismResult.details}</p>
-                    {plagiarismResult.similar_sources.length > 0 &&
-                      plagiarismResult.similar_sources.map((src, i) => (
-                        <div
-                          key={i}
-                          className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3"
-                        >
-                          <p className="text-sm text-gray-800 dark:text-gray-200">{src.text}</p>
-                          <div className="flex gap-3 mt-1">
-                            <span className="text-xs text-gray-500">{src.reason}</span>
-                            <span className="text-xs text-orange-500">{src.possible_source_type}</span>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
           {/* Rewrite result */}
           {activeTab === 'rewrite' && rewriteResult && (
             <motion.div
@@ -722,7 +651,7 @@ export default function Workbench() {
         </AnimatePresence>
 
         {/* Empty state */}
-        {!detectResult && !plagiarismResult && !rewriteResult && (
+        {!detectResult && !rewriteResult && (
           <div className="text-center py-16 text-gray-400">
             <ScanEye className="w-12 h-12 mx-auto mb-4 opacity-40" />
             <p className="text-sm">输入文本后开始分析</p>

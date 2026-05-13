@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ScanEye, Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { ScanEye, Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from '../components/Toast';
 import ThemeToggle from '../components/ThemeToggle';
@@ -56,15 +56,15 @@ export default function LoginPage() {
           </p>
           <div className="mt-12 flex gap-6 text-sm text-blue-200">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">✓</div>
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center"><Check className="w-4 h-4" /></div>
               极速检测
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">✓</div>
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center"><Check className="w-4 h-4" /></div>
               专业报告
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">✓</div>
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center"><Check className="w-4 h-4" /></div>
               免费使用
             </div>
           </div>
